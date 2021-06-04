@@ -1,2 +1,17 @@
 # brb
-brb is supposed to be a tool that crawl a list of url with some extension: aim to find backups of exposed files or shit (  = []string{"~", ".bak", ".bak2", ".old", ".1"}) 
+Bruteforce extensions on URLs (bak, bak1, 1, ~, etc.)
+
+
+```bash
+brb by famos0
+
+Bruteforcing URLs with specific extensions (like bak, bak1, 1, etc.)
+
+ -i, --input-file <path>        Specify filepath
+ -x, --extensions-list <path>   Specify extension list like bak,bak1,etc.
+ -H, --header <header>          Specify header. Can be used multiple times
+ -c, --cookies <cookies>        Specify cookies
+ -x, --proxy <proxy>            Specify proxy
+ -k, --insecure                 Allow insecure server connections when using SSL
+ -t, --threads <int>            Number of thread. Default 10
+```
