@@ -1,6 +1,14 @@
 # brb
 Bruteforce extensions on URLs (bak, bak1, 1, ~, etc.)
 
+## Install
+
+```bash
+go get -u github.com/famos0/brb
+```
+
+
+## Use
 
 ```bash
 brb by famos0
