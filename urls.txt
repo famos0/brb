@@ -1,4 +1,0 @@
-https://www.geeksforgeeks.org/how-to-read-a-file-line-by-line-to-string-in-golang/
-https://duckduckgo.com/?q=golang+read+file+line+by+line&t=newext&atb=v264-1&ia=web
-https://golangdocs.com/reading-files-in-golang
-https://github.com/famos0/brb

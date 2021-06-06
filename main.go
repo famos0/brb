@@ -24,12 +24,18 @@ type options struct {
 	NotCheckCert        bool
 	Headers             headers
 	StatusCodeBlacklist string
+	OutputFile          string
 }
 
 type request struct {
 	RequestURL string
 	Request    *http.Request
 	Client     *http.Client
+}
+
+type response struct {
+	Response   *http.Response
+	RequestURL string
 }
 
 var o options
@@ -140,13 +146,16 @@ func addExtensionToUrl(url string, ext string) string {
 	return url + ext
 }
 
-func printResponse(response *http.Response, url string) {
+func printResponse(response *http.Response, url string, file *os.File) {
 	result := fmt.Sprintf("%s -> %s", url, response.Status)
 	if !strings.Contains(o.StatusCodeBlacklist, response.Status[0:2]) {
 		if strings.Contains(response.Status, "200") {
 			fmt.Println(colorString(colorGreen, result))
 		} else {
 			fmt.Println(result)
+		}
+		if file != nil {
+			file.WriteString(url + "\n")
 		}
 	}
 }
@@ -211,11 +220,16 @@ func main() {
 	flag.StringVar(&o.StatusCodeBlacklist, "status-code-blacklist", "404,302", "")
 	flag.StringVar(&o.StatusCodeBlacklist, "b", "404,302", "")
 
+	flag.StringVar(&o.OutputFile, "output-file", "", "")
+	flag.StringVar(&o.OutputFile, "o", "", "")
+
 	flag.Parse()
 
 	var wg sync.WaitGroup
+	var pg sync.WaitGroup
 
 	requests := make(chan request)
+	responses := make(chan response)
 
 	if !checkStatusCodeBlacklist() {
 		fmt.Println("Status Code Blacklist is not correct")
@@ -227,12 +241,32 @@ func main() {
 
 		go func() {
 			for req := range requests {
-				resp := getResponseFromURL(req)
-				printResponse(resp, req.RequestURL)
+				responses <- response{
+					RequestURL: req.RequestURL,
+					Response:   getResponseFromURL(req),
+				}
 			}
 			wg.Done()
 		}()
 	}
+
+	pg.Add(1)
+	go func() {
+		var output_file *os.File
+		if o.OutputFile != "" {
+			var err error
+			output_file, err = os.Create(o.OutputFile)
+			if isError(err) {
+				os.Exit(1)
+			}
+
+			defer output_file.Close()
+		}
+		for resp := range responses {
+			printResponse(resp.Response, resp.RequestURL, output_file)
+		}
+		pg.Done()
+	}()
 
 	host := setHostHeaderIfExists()
 
@@ -261,4 +295,6 @@ func main() {
 	inputFile.Close()
 	close(requests)
 	wg.Wait()
+	close(responses)
+	pg.Wait()
 }
