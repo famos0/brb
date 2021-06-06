@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -15,13 +16,14 @@ import (
 type headers []string
 
 type options struct {
-	Extensions     string
-	InputFile      string
-	Cookies        string
-	Proxy          string
-	Threads        int
-	Not_check_cert bool
-	Headers        headers
+	Extensions          string
+	InputFile           string
+	Cookies             string
+	Proxy               string
+	Threads             int
+	NotCheckCert        bool
+	Headers             headers
+	StatusCodeBlacklist string
 }
 
 type request struct {
@@ -62,7 +64,7 @@ func prepareClient() *http.Client {
 		Proxy:               proxyClient,
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 100,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: o.Not_check_cert},
+		TLSClientConfig:     &tls.Config{InsecureSkipVerify: o.NotCheckCert},
 	}
 
 	client := &http.Client{
@@ -133,33 +135,46 @@ func getResponseFromURL(r request) *http.Response {
 func addExtensionToUrl(url string, ext string) string {
 	splitted := strings.Split(url, "?")
 	if len(splitted) > 1 {
-		return splitted[0] + "." + ext + "?" + splitted[1]
+		return splitted[0] + ext + "?" + splitted[1]
 	}
-	return url + "." + ext
+	return url + ext
 }
 
 func printResponse(response *http.Response, url string) {
 	result := fmt.Sprintf("%s -> %s", url, response.Status)
-	if strings.Contains(response.Status, "200") {
-		fmt.Println(colorString(colorGreen, result))
-	} else {
-		fmt.Println(result)
+	if !strings.Contains(o.StatusCodeBlacklist, response.Status[0:2]) {
+		if strings.Contains(response.Status, "200") {
+			fmt.Println(colorString(colorGreen, result))
+		} else {
+			fmt.Println(result)
+		}
 	}
+}
+
+func checkStatusCodeBlacklist() bool {
+	re := regexp.MustCompile("^[1-5][0-9][0-9]$")
+	for _, element := range strings.Split(o.StatusCodeBlacklist, ",") {
+		if !re.MatchString(element) {
+			return false
+		}
+	}
+	return true
 }
 
 func showHelper() {
 	helper := []string{
 		"brb by famos0",
 		"",
-		"Bruteforcing URLs with specific extensions (like bak, bak1, 1, etc.)",
+		"Bruteforcing URLs with specific extensions (like .bak, .bak1, ~, .old, etc.)",
 		"",
-		" -i, --input-file <path>\tSpecify filepath",
-		" -x, --extensions-list <path>\tSpecify extension list like bak,bak1,etc.",
-		" -H, --header <header>\t\tSpecify header. Can be used multiple times",
-		" -c, --cookies <cookies>\tSpecify cookies",
-		" -x, --proxy <proxy>\t\tSpecify proxy",
-		" -k, --insecure\t\t\tAllow insecure server connections when using SSL",
-		" -t, --threads <int>\t\tNumber of thread. Default 10",
+		" -i, --input-file <path>\t\tSpecify filepath",
+		" -x, --extensions-list <list>\t\tSpecify extensions in comma separated list. Default .bak,.bak1,~..old",
+		" -H, --header <header>\t\t\tSpecify header. Can be used multiple times",
+		" -c, --cookies <cookies>\t\tSpecify cookies",
+		" -x, --proxy <proxy>\t\t\tSpecify proxy",
+		" -k, --insecure\t\t\t\tAllow insecure server connections when using SSL",
+		" -t, --threads <int>\t\t\tNumber of thread. Default 10",
+		" -b, --status-code-blacklist <list>\tComme separated list of status code not to output",
 	}
 
 	fmt.Println(strings.Join(helper, "\n"))
@@ -172,32 +187,40 @@ func init() {
 }
 
 func main() {
-	flag.StringVar(&o.Extensions, "x", "", "")
-	flag.StringVar(&o.Extensions, "extensions-list", "", "")
+	flag.StringVar(&o.Extensions, "extensions-list", ".bak,.bak1,~,.old", "")
+	flag.StringVar(&o.Extensions, "x", ".bak,.bak1,~,.old", "")
 
-	flag.StringVar(&o.InputFile, "i", "", "")
 	flag.StringVar(&o.InputFile, "input-file", "", "")
+	flag.StringVar(&o.InputFile, "i", "", "")
 
-	flag.StringVar(&o.Cookies, "c", "", "")
 	flag.StringVar(&o.Cookies, "cookies", "", "")
+	flag.StringVar(&o.Cookies, "c", "", "")
 
-	flag.StringVar(&o.Proxy, "p", "", "")
 	flag.StringVar(&o.Proxy, "proxy", "", "")
+	flag.StringVar(&o.Proxy, "p", "", "")
 
-	flag.IntVar(&o.Threads, "t", 10, "")
 	flag.IntVar(&o.Threads, "threads", 10, "")
+	flag.IntVar(&o.Threads, "t", 10, "")
 
 	flag.Var(&o.Headers, "header", "")
 	flag.Var(&o.Headers, "H", "")
 
-	flag.BoolVar(&o.Not_check_cert, "insecure", false, "")
-	flag.BoolVar(&o.Not_check_cert, "k", false, "")
+	flag.BoolVar(&o.NotCheckCert, "insecure", false, "")
+	flag.BoolVar(&o.NotCheckCert, "k", false, "")
+
+	flag.StringVar(&o.StatusCodeBlacklist, "status-code-blacklist", "404,302", "")
+	flag.StringVar(&o.StatusCodeBlacklist, "b", "404,302", "")
 
 	flag.Parse()
 
 	var wg sync.WaitGroup
 
 	requests := make(chan request)
+
+	if !checkStatusCodeBlacklist() {
+		fmt.Println("Status Code Blacklist is not correct")
+		os.Exit(1)
+	}
 
 	for i := 0; i < o.Threads; i++ {
 		wg.Add(1)
