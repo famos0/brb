@@ -172,7 +172,7 @@ func checkStatusCodeBlacklist() bool {
 
 func showHelper() {
 	helper := []string{
-		"brb by famos0",
+		"brb by zblurx",
 		"",
 		"Bruteforcing URLs with specific extensions (like .bak, .bak1, ~, .old, etc.)",
 		"",

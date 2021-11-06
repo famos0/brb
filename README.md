@@ -4,14 +4,14 @@ Bruteforce extensions on URLs (bak, bak1, 1, ~, etc.)
 ## Install
 
 ```bash
-go get -u github.com/famos0/brb
+go get -u github.com/zblurx/brb
 ```
 
 
 ## Use
 
 ```bash
-brb by famos0
+brb by zblurx
 
 Bruteforcing URLs with specific extensions (like .bak, .bak1, ~, .old, etc.)
 
