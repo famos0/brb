@@ -241,10 +241,14 @@ func main() {
 
 		go func() {
 			for req := range requests {
-				responses <- response{
-					RequestURL: req.RequestURL,
-					Response:   getResponseFromURL(req),
+				resp := getResponseFromURL(req)
+				if resp != nil {
+					responses <- response{
+						RequestURL: req.RequestURL,
+						Response:   resp,
+					}
 				}
+
 			}
 			wg.Done()
 		}()
